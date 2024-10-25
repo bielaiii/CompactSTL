@@ -1,4 +1,5 @@
 #include <algorithm> // std::copy
+#include <atomic>
 #include <barrier>
 #include <cstddef> // std::size_t
 #include <cstdint>
@@ -6,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <ostream>
+#include <random>
 #include <type_traits>
 #include <utility>
 using std::cout;
@@ -19,18 +21,22 @@ struct has_std_out<T, std::void_t<decltype(std::declval<std::ostream&>()
                                            << std::declval<T>())>>
     : std::true_type {};
 
-template <typename T> class MySharePointer {
+template <typename T> class SharedPointer {
   private:
-    size_t* remain;
+    std::atomic<size_t>* remain;
     T* t;
 
   public:
+    using delFunc = void (*)(void*);
+    delFunc selfDel;
+    
     template <typename... Args>
-    MySharePointer(Args&&... args) noexcept
-        : remain(new size_t(1)), t(new T(std::forward<Args>(args)...)){};
-    ~MySharePointer() noexcept {
-        (*remain)--;
-        if ((*remain) == 0) {
+    SharedPointer(Args&&... args) noexcept
+        : remain(new std::atomic<size_t>(1)),
+          t(new T(std::forward<Args>(args)...)){};
+    ~SharedPointer() noexcept {
+        int val = remain->fetch_sub(1);
+        if (val == 1) {
             delete remain;
             delete t;
         } else {
@@ -39,38 +45,33 @@ template <typename T> class MySharePointer {
         }
     }
 
-    template <typename Y, typename Deleter>
-    MySharePointer() {
-        
+    template <typename Y, typename Deleter> SharedPointer(std::nullptr_t ptr, Deleter del) {
+
 
     }
 
-    MySharePointer(T* ptr) noexcept {
-        remain = new size_t(1);
+    SharedPointer(T* ptr) noexcept {
+        remain = new std::atomic<size_t>(1);
         t = ptr;
     }
 
-    MySharePointer(MySharePointer<T>& myptr)
-        : remain(myptr.remain), t(myptr.t) {
-        (*remain)++;
+    SharedPointer(SharedPointer<T>& myptr) : remain(myptr.remain), t(myptr.t) {
+        remain->fetch_add(1);
         cout << "copy constructor\n";
     }
 
-    MySharePointer(MySharePointer<T>&& myptr)
+    SharedPointer(SharedPointer<T>&& myptr)
         : remain(std::move(myptr.remain)), t(std::move(myptr.t)) {
         cout << "move constructor\n";
     }
-    MySharePointer<T>& operator=(MySharePointer<T>& myptr) {
+    SharedPointer<T>& operator=(SharedPointer<T>& myptr) {
         cout << "copy assignment constructor\n";
         if (this == &myptr) {
             return *this;
         }
-        myptr.remain++;
-        remain--;
-        if ((*remain) == 0) {
-            delete remain;
-            delete t;
-        }
+        myptr.remain->fetch_add(1);
+        delete myptr;
+
         remain = myptr.remain;
         t = myptr.t;
         return *this;
@@ -79,18 +80,17 @@ template <typename T> class MySharePointer {
     size_t use_count() { return *remain; }
 
     friend std::ostream& operator<<(std::ostream& os,
-                                    const MySharePointer<T>& myptr) {
-        os << format("src addr : 0x{:x} remian addr : 0x{:x} cnt : {}\n",
-                     reinterpret_cast<std::uintptr_t>(myptr.remain),
-                     reinterpret_cast<std::uintptr_t>(myptr.t),
-                     *(myptr.remain));
+                                    const SharedPointer<T>& myptr) {
+        os << format("src addr : 0x{:p} remian addr : 0x{:p} cnt : {}\n",
+                     static_cast<void*>(myptr.remain),
+                     static_cast<void*>(myptr.t), (myptr.remain->load()));
         if constexpr (has_std_out<T>::value) {
             os << myptr.t;
         }
         return os;
     }
 
-    void Release(MySharePointer<T> ptr) {
+    void Release(SharedPointer<T> ptr) {
         *ptr.remain = 0;
         delete remain;
         delete this;
@@ -99,14 +99,14 @@ template <typename T> class MySharePointer {
     void reset(T* anotherPtr = nullptr) {
         SubtractOneCount();
         if (anotherPtr) {
-            remain = new size_t(1);
+            remain = new std::atomic<size_t>(1);
             t = anotherPtr;
         }
     }
 
     void SubtractOneCount() {
-        (*remain)--;
-        if (*remain == 0) {
+        int val = remain->fetch_sub(1);
+        if (val == 1) {
             delete this;
         }
     }
@@ -121,6 +121,7 @@ template <typename T> class MySharePointer {
 struct Foo {
     int a;
     double d;
+    Foo() : a(0), d(0) {};
     Foo(int a_, double d_) : a(a_), d(d_) { std::cout << "Foo construct\n"; };
 
     template <typename T, std::enable_if<std::is_same_v<std::decay_t<T>, Foo>>>
@@ -129,17 +130,19 @@ struct Foo {
         return os;
     }
 
-    ~Foo() { std::cout << "Foo destruct\n"; };
+    virtual ~Foo() { std::cout << "Foo destruct\n"; };
 };
 
-struct Bar {
+struct Bar : Foo {
     float x;
     float y;
-    Bar(float x_, float y_) : x(x_), y(y_){};
+    Bar() : x(0), y(0) { cout << "Bar construct\n"; };
+    Bar(float x_, float y_) : x(x_), y(y_) { cout << "Bar construct\n"; };
+    virtual ~Bar() { cout << "Bar destruct\n"; };
 };
 
 int main() {
-    auto temp = MySharePointer<Foo>(1, 3.3);
+    auto temp = SharedPointer<Foo>(1, 3.3);
 
     std::cout << temp->a << "\n";
     cout << temp;
@@ -149,8 +152,8 @@ int main() {
         auto thirdTemp(std::move(secondTemp));
         cout << thirdTemp;
     }
-    auto bar = new Foo(3314, 31.4f);
-    temp.reset(bar);
+    Foo* foo = new Bar(3314, 31.4f);
+    temp.reset(foo);
 
     return 0;
 }
