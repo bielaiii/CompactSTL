@@ -3,6 +3,7 @@
 #include <barrier>
 #include <cstddef> // std::size_t
 #include <cstdint>
+#include <cstdio>
 #include <format>
 #include <iostream>
 #include <memory>
@@ -36,6 +37,7 @@ template <typename T> class SharedPointer {
           t(new T(std::forward<Args>(args)...)){};
     ~SharedPointer() noexcept {
         int val = remain->fetch_sub(1);
+        cout << format("current remain {}\n", val - 1);
         if (val == 1) {
             delete remain;
             delete t;
@@ -47,10 +49,9 @@ template <typename T> class SharedPointer {
 
     template <typename Y, typename Deleter> SharedPointer(std::nullptr_t ptr, Deleter del) {
 
-
     }
 
-    SharedPointer(T* ptr) noexcept {
+    explicit SharedPointer(T* ptr) noexcept {
         remain = new std::atomic<size_t>(1);
         t = ptr;
     }
@@ -121,7 +122,7 @@ template <typename T> class SharedPointer {
 struct Foo {
     int a;
     double d;
-    Foo() : a(0), d(0) {};
+    Foo() : a(-2), d(0) {};
     Foo(int a_, double d_) : a(a_), d(d_) { std::cout << "Foo construct\n"; };
 
     template <typename T, std::enable_if<std::is_same_v<std::decay_t<T>, Foo>>>
@@ -136,10 +137,15 @@ struct Foo {
 struct Bar : Foo {
     float x;
     float y;
-    Bar() : x(0), y(0) { cout << "Bar construct\n"; };
+    Bar() : x(-2), y(0) { cout << "Bar construct\n"; };
     Bar(float x_, float y_) : x(x_), y(y_) { cout << "Bar construct\n"; };
     virtual ~Bar() { cout << "Bar destruct\n"; };
 };
+
+template<typename T>
+void PrintSp(SharedPointer<T> sp) {
+    cout << &sp  << "\n";
+}
 
 int main() {
     auto temp = SharedPointer<Foo>(1, 3.3);
@@ -154,6 +160,8 @@ int main() {
     }
     Foo* foo = new Bar(3314, 31.4f);
     temp.reset(foo);
+    PrintSp(temp);
+
 
     return 0;
 }
