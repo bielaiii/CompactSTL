@@ -1,4 +1,5 @@
 #include "header.h"
+#include <algorithm>
 #include <cstdlib>
 #include <format>
 #include <functional>
@@ -11,7 +12,6 @@
 using std::cout;
 using std::endl;
 
-
 namespace CompactSTL {
 
 template <typename T, typename Deleter = std::default_delete<T>> class UniquePtr {
@@ -20,16 +20,8 @@ private:
     Deleter del;
 
 public:
-    template <typename... Args> UniquePtr() = delete;
-
-    template <typename... Args, typename = void>
-    UniquePtr(Args &&...arg) noexcept : ptr(new T(std::forward<Args>(arg)...)), del() {}
-
     UniquePtr(UniquePtr &other)            = delete;
     UniquePtr &operator=(UniquePtr &other) = delete;
-
-    template <typename U, typename D = Deleter, typename = void>
-    UniquePtr<U, std::void_t<typename std::is_pointer<T *>::value>>(T *ptr, D deleter) : ptr(ptr), del(deleter){};
 
     UniquePtr(UniquePtr &&other) noexcept : ptr(other.ptr), del(other.del) {};
     UniquePtr &operator=(UniquePtr &&other) noexcept {
@@ -37,13 +29,12 @@ public:
             del(ptr);
             ptr = other.ptr;
             del = other.del;
-
             other.ptr = nullptr;
         }
         return *this;
     };
 
-    explicit UniquePtr(T *ptr) noexcept : ptr(ptr) {};
+    UniquePtr(T *ptr) noexcept : ptr(ptr) {};
 
     ~UniquePtr() noexcept {
         if (ptr) {
@@ -69,8 +60,8 @@ public:
         std::swap(del, other.del);
     }
     T *release() {
-        T * temp = ptr;
-        ptr = nullptr;
+        T *temp = ptr;
+        ptr     = nullptr;
         return temp;
     }
 };
@@ -84,13 +75,9 @@ struct DeleterMyPtr {
 
 int main() {
     using namespace CompactSTL;
-    UniquePtr<Foo> sp(1, 2.2);
-    auto it = sp.release();
-    std::cout << it << "\n";
-    delete it;
 
-    auto rawPtr = new Foo(1, 3);
-    auto sp1    = UniquePtr<Foo, DeleterMyPtr>(rawPtr);
-    cout << sp1.get() << "\n";
+    auto sp1 = UniquePtr<Foo, DeleterMyPtr>(new Bar(-11, 3));
+
+    auto stdSp = std::unique_ptr<Foo, DeleterMyPtr>(new Bar(1, 3));
     return 0;
 }
