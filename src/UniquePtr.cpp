@@ -7,9 +7,12 @@
 #include <ostream>
 #include <type_traits>
 #include <utility>
-namespace CompactSTL {
 
-template <typename T> T &&Move(T &&t) { return static_cast<T &&>(t); }
+using std::cout;
+using std::endl;
+
+
+namespace CompactSTL {
 
 template <typename T, typename Deleter = std::default_delete<T>> class UniquePtr {
 private:
@@ -43,11 +46,13 @@ public:
     explicit UniquePtr(T *ptr) noexcept : ptr(ptr) {};
 
     ~UniquePtr() noexcept {
-        del(ptr);
+        if (ptr) {
+            del(ptr);
+        }
         std::cout << "unique point get released\n";
     }
 
-    T &operator->() { return ptr; }
+    T *operator->() { return ptr; }
 
     void reset(T *t = nullptr) {
         T *old_ptr = this->ptr;
@@ -59,15 +64,13 @@ public:
 
     T *get() { return ptr; }
 
-    friend std::ostream &operator<<(std::ostream &os, UniquePtr<T> &t) {
-        std::cout << t.get();
-        return os;
+    void swap(UniquePtr<T> &other) {
+        std::swap(ptr, other.ptr);
+        std::swap(del, other.del);
     }
-
-    void swap(UniquePtr<T> &t) { UniquePtr<T> temp(t); }
     T *release() {
-        T *temp   = this->ptr;
-        this->ptr = nullptr;
+        T * temp = ptr;
+        ptr = nullptr;
         return temp;
     }
 };
@@ -75,17 +78,19 @@ public:
 
 void FreeMyPtr(Foo *ptr) { delete ptr; }
 
+struct DeleterMyPtr {
+    void operator()(Foo *f) { delete (f); }
+};
+
 int main() {
     using namespace CompactSTL;
     UniquePtr<Foo> sp(1, 2.2);
     auto it = sp.release();
     std::cout << it << "\n";
+    delete it;
 
-    // auto delFoo = std::function<FreeMyPtr<Foo*>()>;
-    auto delFoo = [](Foo *foo) { delete foo; };
     auto rawPtr = new Foo(1, 3);
-    auto ir     = FreeMyPtr;
-    auto sp1    = UniquePtr<Foo>(static_cast<Foo *>(rawPtr), FreeMyPtr);
-
+    auto sp1    = UniquePtr<Foo, DeleterMyPtr>(rawPtr);
+    cout << sp1.get() << "\n";
     return 0;
 }
