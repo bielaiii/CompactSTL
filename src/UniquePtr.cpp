@@ -27,8 +27,8 @@ public:
     UniquePtr &operator=(UniquePtr &&other) noexcept {
         if (this != other) {
             del(ptr);
-            ptr = other.ptr;
-            del = other.del;
+            ptr       = other.ptr;
+            del       = other.del;
             other.ptr = nullptr;
         }
         return *this;
@@ -65,6 +65,10 @@ public:
         return temp;
     }
 };
+
+template <typename T, typename... Args> UniquePtr<T> MakeUnique(Args &&...args) {
+    return UniquePtr<T>(new T(std::forward<Args>(args)...));
+}
 }; // namespace CompactSTL
 
 void FreeMyPtr(Foo *ptr) { delete ptr; }
@@ -75,7 +79,7 @@ struct DeleterMyPtr {
 
 int main() {
     using namespace CompactSTL;
-
+    auto sp2 = MakeUnique<Foo>(1, 2.2);
     auto sp1 = UniquePtr<Foo, DeleterMyPtr>(new Bar(-11, 3));
 
     auto stdSp = std::unique_ptr<Foo, DeleterMyPtr>(new Bar(1, 3));

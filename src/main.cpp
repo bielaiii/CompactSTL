@@ -15,12 +15,8 @@ using std::cout;
 using std::endl;
 using std::format;
 
-template <typename T, typename = void> struct has_std_out : std::false_type {};
 
-template <typename T>
-struct has_std_out<T, std::void_t<decltype(std::declval<std::ostream&>()
-                                           << std::declval<T>())>>
-    : std::true_type {};
+namespace CompactSTL {
 
 template <typename T> class SharedPointer {
   private:
@@ -85,9 +81,6 @@ template <typename T> class SharedPointer {
         os << format("src addr : 0x{:p} remian addr : 0x{:p} cnt : {}\n",
                      static_cast<void*>(myptr.remain),
                      static_cast<void*>(myptr.t), (myptr.remain->load()));
-        if constexpr (has_std_out<T>::value) {
-            os << myptr.t;
-        }
         return os;
     }
 
@@ -117,7 +110,16 @@ template <typename T> class SharedPointer {
     T* Get() { return this->t; }
 
     T* operator->() { return t; }
+
+
 };
+
+
+template<typename T, typename... Args>
+SharedPointer<T> makeSharePointer(Args && ...args) {
+    return SharedPointer<T>(new T(std::forward<Args>(args)...));
+}
+}
 
 struct Foo {
     int a;
@@ -143,11 +145,12 @@ struct Bar : Foo {
 };
 
 template<typename T>
-void PrintSp(SharedPointer<T> sp) {
+void PrintSp(CompactSTL::SharedPointer<T> sp) {
     cout << &sp  << "\n";
 }
 
 int main() {
+    using namespace CompactSTL;
     auto temp = SharedPointer<Foo>(1, 3.3);
 
     std::cout << temp->a << "\n";
