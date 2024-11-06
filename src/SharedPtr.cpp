@@ -20,7 +20,7 @@ namespace CompactSTL {
 
 template <typename T> class SharedPointer {
   private:
-    std::atomic<size_t>* remain;
+    std::atomic<int>* remain;
     T* t;
 
   public:
@@ -29,7 +29,7 @@ template <typename T> class SharedPointer {
     
     template <typename... Args>
     SharedPointer(Args&&... args) noexcept
-        : remain(new std::atomic<size_t>(1)),
+        : remain(new std::atomic<int>(1)),
           t(new T(std::forward<Args>(args)...)){};
     ~SharedPointer() noexcept {
         int val = remain->fetch_sub(1);
@@ -48,7 +48,7 @@ template <typename T> class SharedPointer {
     }
 
     explicit SharedPointer(T* ptr) noexcept {
-        remain = new std::atomic<size_t>(1);
+        remain = new std::atomic<int>(1);
         t = ptr;
     }
 
@@ -93,7 +93,7 @@ template <typename T> class SharedPointer {
     void reset(T* anotherPtr = nullptr) {
         SubtractOneCount();
         if (anotherPtr) {
-            remain = new std::atomic<size_t>(1);
+            remain = new std::atomic<int>(1);
             t = anotherPtr;
         }
     }

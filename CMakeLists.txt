@@ -1,18 +1,21 @@
 cmake_minimum_required(VERSION 3.20)
 PROJECT(guideline)
 
-add_executable(${PROJECT_NAME} )
-target_sources(${PROJECT_NAME} PRIVATE src/UniquePtr.cpp)
-SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES 
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
-
-)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+add_executable(UniquePtr)
+add_executable(SharedPtr)
+add_executable(Tuple)
+add_executable(Pair)
+target_sources(UniquePtr PRIVATE src/UniquePtr.cpp)
+target_sources(SharedPtr PRIVATE src/SharedPtr.cpp)
+target_sources(Tuple PRIVATE src/Tuple.cpp)
+target_sources(Pair PRIVATE src/Pair.cpp)
 
-target_include_directories(${PROJECT_NAME} PRIVATE include)
+include_directories(include)
 
-target_compile_options(${PROJECT_NAME} PRIVATE 
+add_compile_options(
     $<$<CXX_COMPILER_ID:GNU>:
         $<$<CONFIG:Debug>:-Wall -pedantic -g>
         $<$<CONFIG:Release>:-O3>
