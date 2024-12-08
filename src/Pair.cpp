@@ -15,7 +15,7 @@ template <typename T, typename U> struct pair {
         second = others.second;
         return this;
     }
-    
+
     // todo set proper restrict
     pair &operator=(pair<T, U> &&others) {
         first  = std::forward<T>(others.first);

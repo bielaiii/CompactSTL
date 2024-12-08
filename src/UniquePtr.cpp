@@ -77,7 +77,25 @@ struct DeleterMyPtr {
     void operator()(Foo *f) { delete (f); }
 };
 
+struct A{
 
+    A() {
+        cout << "A is constructed\n";
+    }
+    ~A() {
+        cout << "A is destructed\n";
+    }
+};
+
+struct B : public A{
+    B() {
+        cout << "B is constructed\n";   
+    }
+    ~B()
+    {
+        cout << "B is destructed\n";
+    }
+};
 template<typename T, typename Y = std::default_delete<T>>
 void TestUnique(CompactSTL::UniquePtr<T, Y> &ptr)
 {
@@ -86,13 +104,16 @@ void TestUnique(CompactSTL::UniquePtr<T, Y> &ptr)
 
 int main() {
     using namespace CompactSTL;
-    auto sp2 = MakeUnique<Foo>(1, 2.2);
-    auto sp1 = UniquePtr<Foo, DeleterMyPtr>(new Bar(-11, 3));
+    auto sp2 = MakeUnique<Bar>(1, 2.2);
+    cout << sp2->a << " " << sp2->d << endl;
+    //auto sp1 = UniquePtr<Foo, DeleterMyPtr>(new Bar(-11, 3));
 
-    auto stdSp = std::unique_ptr<Foo, DeleterMyPtr>(new Bar(1, 3));
-    TestUnique(sp1);
-    TestUnique(sp2);
-    using namespace std::string_literals;
-    std::tuple<double, std::string, char> ty{1.3, "hello"s, 'a'};
+    //auto stdSp = std::unique_ptr<Foo, DeleterMyPtr>(new Bar(1, 3));
+    //TestUnique(sp1);
+    //TestUnique(sp2);
+    //using namespace std::string_literals;
+    //std::tuple<double, std::string, char> ty{1.3, "hello"s, 'a'};
+
+
     return 0;
 }

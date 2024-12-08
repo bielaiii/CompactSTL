@@ -15,120 +15,124 @@ using std::cout;
 using std::endl;
 using std::format;
 
-
 namespace CompactSTL {
 
-template <typename T> class SharedPointer {
-  private:
-    std::atomic<int>* remain;
-    T* t;
+template <typename T> struct ControlBlock {
+    T *ptr;
+    std::atomic<int> remain;
+    ControlBlock() = delete;
+    ControlBlock(int remain, T *ptr) : remain(remain), ptr(ptr) {};
+    ~ControlBlock() { delete ptr; }
+    int decrease() {
+        int n = remain.fetch_sub(1);
+        return n;
+    }
+    int increase() {
+        int n = remain.fetch_add(1);
+        return n;
+    }
+};
 
-  public:
-    using delFunc = void (*)(void*);
-    delFunc selfDel;
-    
-    template <typename... Args>
-    SharedPointer(Args&&... args) noexcept
-        : remain(new std::atomic<int>(1)),
-          t(new T(std::forward<Args>(args)...)){};
-    ~SharedPointer() noexcept {
-        int val = remain->fetch_sub(1);
-        cout << format("current remain {}\n", val - 1);
-        if (val == 1) {
-            delete remain;
-            delete t;
+template <typename T, typename DelFunc = std::default_delete<T>>
+class SharedPointer {
+private:
+    ControlBlock<T> *block_ = nullptr;
+
+public:
+    DelFunc selfDel;
+
+    explicit SharedPointer(T * ptr, DelFunc delfunc) noexcept {
+        if (block_ == nullptr) {
+            block_ = new ControlBlock<T>(1, new (T));
+            selfDel = delfunc;
         } else {
-            remain--;
+            block_->increase();
+        }
+    };
+    ~SharedPointer() noexcept {
+        int val = block_->decrease();
+        if (val == 1) {
+            delete block_;
+        } else {
             return;
         }
     }
 
-    template <typename Y, typename Deleter> SharedPointer(std::nullptr_t ptr, Deleter del) {
+    /* template <typename Y, typename Deleter>
+    SharedPointer(std::nullptr_t ptr, Deleter del) {} */
 
+
+    SharedPointer(SharedPointer<T> &myptr) {
+        this->block_ = myptr.block_;
+        block_->increase();
     }
 
-    explicit SharedPointer(T* ptr) noexcept {
-        remain = new std::atomic<int>(1);
-        t = ptr;
-    }
-
-    SharedPointer(SharedPointer<T>& myptr) : remain(myptr.remain), t(myptr.t) {
-        remain->fetch_add(1);
-        cout << "copy constructor\n";
-    }
-
-    SharedPointer(SharedPointer<T>&& myptr)
-        : remain(std::move(myptr.remain)), t(std::move(myptr.t)) {
-        cout << "move constructor\n";
-    }
-    SharedPointer<T>& operator=(SharedPointer<T>& myptr) {
-        cout << "copy assignment constructor\n";
+    SharedPointer(SharedPointer<T> &&myptr) { this->block_ = myptr.block_; }
+    SharedPointer<T> &operator=(SharedPointer<T> &myptr) {
         if (this == &myptr) {
             return *this;
         }
         myptr.remain->fetch_add(1);
         delete myptr;
 
-        remain = myptr.remain;
-        t = myptr.t;
+        block_->remain = myptr.remain;
+        block_->t      = myptr.t;
         return *this;
     }
 
-    size_t use_count() { return *remain; }
+    size_t use_count() { return *block_->remain; }
 
-    friend std::ostream& operator<<(std::ostream& os,
-                                    const SharedPointer<T>& myptr) {
+    friend std::ostream &operator<<(std::ostream &os,
+                                    const SharedPointer<T> &myptr) {
         os << format("src addr : 0x{:p} remian addr : 0x{:p} cnt : {}\n",
-                     static_cast<void*>(myptr.remain),
-                     static_cast<void*>(myptr.t), (myptr.remain->load()));
+                     static_cast<void *>(&myptr.block_->remain),
+                     static_cast<void *>(myptr.block_->ptr),
+                     (myptr.block_->remain.load()));
         return os;
     }
 
-    void Release(SharedPointer<T> ptr) {
-        *ptr.remain = 0;
-        delete remain;
-        delete this;
+    void Release(const SharedPointer<T> &ptr = nullptr) {
+        ptr.block_->remain = 0;
+        delete block_->ptr;
+        delete block_;
     }
 
-    void reset(T* anotherPtr = nullptr) {
+    void reset(T *anotherPtr = nullptr) {
         SubtractOneCount();
         if (anotherPtr) {
-            remain = new std::atomic<int>(1);
-            t = anotherPtr;
+            // delete block_;
+            block_ = new ControlBlock(1, anotherPtr);
         }
     }
 
     void SubtractOneCount() {
-        int val = remain->fetch_sub(1);
+        int val = block_->decrease();
         if (val == 1) {
             delete this;
         }
     }
 
-    T* operator*() { return *t; }
+    T *operator*() { return *block_->t; }
 
-    T* Get() { return this->t; }
+    T *Get() { return this->t; }
 
-    T* operator->() { return t; }
-
-
+    T *operator->() { return block_->ptr; }
 };
 
-
-template<typename T, typename... Args>
-SharedPointer<T> makeSharePointer(Args && ...args) {
+template <typename T, typename... Args>
+SharedPointer<T> makeSharePointer(Args &&...args) {
     return SharedPointer<T>(new T(std::forward<Args>(args)...));
 }
-}
+} // namespace CompactSTL
 
 struct Foo {
     int a;
     double d;
-    Foo() : a(-2), d(0) {};
+    Foo() : a(-2), d(0) { std::cout << "Foo default construct\n"; };
     Foo(int a_, double d_) : a(a_), d(d_) { std::cout << "Foo construct\n"; };
 
     template <typename T, std::enable_if<std::is_same_v<std::decay_t<T>, Foo>>>
-    friend std::ostream& operator<<(std::ostream& os, T f) {
+    friend std::ostream &operator<<(std::ostream &os, T f) {
         os << format("a : {}, d : {}!!!!\n", f->a, f->d);
         return os;
     }
@@ -144,27 +148,23 @@ struct Bar : Foo {
     virtual ~Bar() { cout << "Bar destruct\n"; };
 };
 
-template<typename T>
-void PrintSp(CompactSTL::SharedPointer<T> sp) {
-    cout << &sp  << "\n";
+template <typename T> void PrintSp(CompactSTL::SharedPointer<T> sp) {
+    cout << &sp << "\n";
+}
+
+template <typename T> void DeleteFunc(T *t) {
+    cout << "callde from func\n";
+    delete t;
 }
 
 int main() {
     using namespace CompactSTL;
-    auto temp = SharedPointer<Foo>(1, 3.3);
+    //auto temp = SharedPointer<Foo, DeleteFUnc<Foo>>(1, 3.3);
+    // todo: bug to fix
+    auto sp2 = SharedPointer<Foo>(new Foo(1, 3.3), DeleteFunc);
 
-    std::cout << temp->a << "\n";
-    cout << temp;
-    {
-        auto secondTemp(temp);
-        cout << secondTemp;
-        auto thirdTemp(std::move(secondTemp));
-        cout << thirdTemp;
-    }
-    Foo* foo = new Bar(3314, 31.4f);
-    temp.reset(foo);
-    PrintSp(temp);
 
+    auto sp1 = std::shared_ptr<Foo>(new Foo(12, 3.3));
 
     return 0;
 }

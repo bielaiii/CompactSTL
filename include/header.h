@@ -8,7 +8,7 @@ using std::format;
 struct Foo {
     int a;
     double d;
-    Foo() : a(-2), d(0) {};
+    Foo() : a(1), d(2) { std::cout << "Foo is default construct\n";};
     Foo(int a_, double d_) : a(a_), d(d_) { std::cout << "Foo construct\n"; };
 
     template <typename T, std::enable_if<std::is_same_v<std::decay_t<T>, Foo>>>
