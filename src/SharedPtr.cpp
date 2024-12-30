@@ -56,26 +56,17 @@ public:
     template <typename D>
     SharePointerImpl(T *ptr_, D del_ = std::default_delete<T>()) noexcept
         : ptr(ptr_) {}
-    // SharePointerImpl(T * ptr_, D del) noexcept : ptr(ptr_){}
+
 private:
     T *ptr;
-    // D del;
 };
 
-template <typename T, typename DelFunc = std::default_delete<T>
-#if 0
-,
-          typename =
-              std::enable_if_t<disjunction_v<std::is_function_v<T>>>
-              #endif
-              >
+template <typename T, typename DelFunc = std::default_delete<T>>
 class SharedPointer {
 private:
     ControlBlock *block_ = nullptr;
     T *ptr;
     DelFunc delfunc;
-    // SharePointerImpl<T> impl_;
-    // std::function<void(*)(T*)> delfunc;
 
 public:
     template <typename U, typename CurDel = DelFunc>
@@ -86,7 +77,6 @@ public:
         } else {
             block_->increase();
         }
-        // delfunc = delfunc_;
     };
 
     template <typename U>
@@ -97,20 +87,13 @@ public:
         } else {
             block_->increase();
         }
-        // delfunc = delfunc_;
     };
-    /* template <typename DelFunc = void(*)(T *)>
-    explicit SharedPointer(T *ptr, DelFunc delfunc) noexcept {
-        if (block_ == nullptr) {
-            block_ = new ControlBlock<T>(1, ptr, delfunc);
-        } else {
-            block_->increase();
-        }
-    }; */
+
     ~SharedPointer() noexcept {
         int val = block_->decrease();
         if (val == 1) {
             delete block_;
+            delfunc(ptr);
         } else {
             return;
         }
@@ -148,7 +131,6 @@ public:
     void reset(T *anotherPtr = nullptr) {
         SubtractOneCount();
         if (anotherPtr) {
-            // delete block_;
             block_ = new ControlBlock(1, anotherPtr);
         }
     }
