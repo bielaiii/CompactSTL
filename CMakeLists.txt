@@ -9,11 +9,13 @@ add_executable(SharedPtr)
 add_executable(Tuple)
 add_executable(Pair)
 add_executable(Main)
+
 target_sources(UniquePtr PRIVATE src/UniquePtr.cpp)
 target_sources(SharedPtr PRIVATE src/SharedPtr.cpp)
 target_sources(Tuple PRIVATE src/Tuple.cpp)
 target_sources(Pair PRIVATE src/Pair.cpp)
 target_sources(Main PRIVATE src/main.cpp)
+
 
 include_directories(include)
 
