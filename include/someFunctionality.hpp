@@ -33,23 +33,27 @@ template <typename T> struct RemovePtr<T *> {
 };
 
 template<typename T>
-struct RemoveReference {
+struct RemoveLeftReference {
     using mytype = T;
 };
 
-
-
 template<typename T>
 struct RemoveLeftReference<T&> {
-    using mytype = typename RemoveReference<T>::mytype;
+    using mytype = typename RemoveLeftReference<T>::mytype;
 };
-
+template<typename T>
+struct RemoveRightReference {
+    using mytype = T;
+};
 
 template<typename T>
-struct RemoveRightReference<T&> {
-    using mytype = typename RemoveReference<T>::mytype;
+struct RemoveRightReference<T&&> {
+    using mytype = typename RemoveRightReference<T>::mytype;
 };
-
+template<typename T>
+struct RemoveReference {
+    using mytype = typename RemoveLeftReference<typename RemoveRightReference<T>::mytype>::mytype;
+};
 
 
 template <typename T, typename = void> struct IsPtr : std::true_type {};
