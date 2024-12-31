@@ -6,7 +6,6 @@
 #include <cstdio>
 #include <format>
 #include <functional>
-#include <functional>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -24,7 +23,6 @@ private:
     std::atomic<int> remain;
 
 public:
-
 public:
     ControlBlock() = delete;
     ControlBlock(int count_) noexcept : remain(std::atomic<int>(count_)) {};
@@ -64,12 +62,11 @@ private:
     T *ptr;
 };
 
-template <typename T>
-class SharedPointer {
+template <typename T> class SharedPointer {
 private:
     ControlBlock *block_ = nullptr;
     T *ptr;
-    std::function<void(T*)> delfunc;
+    std::function<void(T *)> delfunc;
 
 public:
     template <typename U, typename CurDel>
@@ -191,7 +188,6 @@ void DeleteFunc(Foo *t) {
 int main() {
     using namespace CompactSTL;
 
-
     auto sp1     = std::shared_ptr<Foo>(new Foo(12, 3.3), DeleteFunc);
     auto tempdel = [](Foo *foo) {
         cout << "delete from lambda func\n";
@@ -199,12 +195,11 @@ int main() {
     };
 
     {
-    auto sp4 = SharedPointer<Foo>(new Foo(12, 3.3), tempdel);
-     auto sp5 = sp4;   
-     cout << "will not yet destruct\n";
+        auto sp4 = SharedPointer<Foo>(new Foo(12, 3.3), tempdel);
+        auto sp5 = sp4;
+        cout << "will not yet destruct\n";
     }
 
-    auto sp2 = CompactSTL::SharedPointer<Foo>(new Foo(1, 3.3),
-                                                               DeleteFunc);
+    auto sp2 = CompactSTL::SharedPointer<Foo>(new Foo(1, 3.3), DeleteFunc);
     return 0;
 }
