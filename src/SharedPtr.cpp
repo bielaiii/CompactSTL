@@ -64,15 +64,15 @@ private:
     T *ptr;
 };
 
-template <typename T, typename DelFunc = std::default_delete<T>>
+template <typename T>
 class SharedPointer {
 private:
     ControlBlock *block_ = nullptr;
     T *ptr;
-    DelFunc delfunc;
+    std::function<void(T*)> delfunc;
 
 public:
-    template <typename U, typename CurDel = DelFunc>
+    template <typename U, typename CurDel>
     SharedPointer(U *ptr_, CurDel delfunc_) noexcept
         : ptr(ptr_), delfunc(delfunc_) {
         if (block_ == nullptr) {
@@ -104,9 +104,7 @@ public:
 
     SharedPointer(const SharedPointer<T> &myptr) noexcept {
         this->block_ = myptr.block_;
-        if (myptr) {
-            block_->increase();
-        }
+        block_->increase();
     }
 
     SharedPointer(SharedPointer<T> &&myptr) noexcept {
@@ -193,15 +191,20 @@ void DeleteFunc(Foo *t) {
 int main() {
     using namespace CompactSTL;
 
-    auto sp2 = CompactSTL::SharedPointer<Foo, void (*)(Foo *)>(new Foo(1, 3.3),
-                                                               DeleteFunc);
 
     auto sp1     = std::shared_ptr<Foo>(new Foo(12, 3.3), DeleteFunc);
     auto tempdel = [](Foo *foo) {
         cout << "delete from lambda func\n";
         delete foo;
     };
-    auto sp4 = SharedPointer<Foo, decltype(tempdel)>(new Foo(12, 3.3), tempdel);
 
+    {
+    auto sp4 = SharedPointer<Foo>(new Foo(12, 3.3), tempdel);
+     auto sp5 = sp4;   
+     cout << "will not yet destruct\n";
+    }
+
+    auto sp2 = CompactSTL::SharedPointer<Foo>(new Foo(1, 3.3),
+                                                               DeleteFunc);
     return 0;
 }
