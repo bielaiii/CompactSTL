@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <format>
 #include <functional>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -21,6 +22,8 @@ namespace CompactSTL {
 struct ControlBlock {
 private:
     std::atomic<int> remain;
+
+public:
 
 public:
     ControlBlock() = delete;
