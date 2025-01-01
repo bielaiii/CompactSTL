@@ -10,6 +10,7 @@ add_executable(Tuple)
 add_executable(Pair)
 add_executable(Main)
 add_executable(Test)
+add_executable(C_sample)
 
 target_sources(UniquePtr PRIVATE src/UniquePtr.cpp)
 target_sources(SharedPtr PRIVATE src/SharedPtr.cpp)
@@ -17,17 +18,18 @@ target_sources(Tuple PRIVATE src/Tuple.cpp)
 target_sources(Pair PRIVATE src/Pair.cpp)
 target_sources(Main PRIVATE src/main.cpp)
 target_sources(Test PRIVATE src/test.cpp)
+target_sources(C_sample PRIVATE src/a.c)
 
 
 include_directories(include)
 
 add_compile_options(
     $<$<CXX_COMPILER_ID:GNU>:
-        $<$<CONFIG:Debug>:-Wall -pedantic -g>
+        $<$<CONFIG:Debug>:-Wall -pedantic -g -Wextra>
         $<$<CONFIG:Release>:-O3>
     >
     $<$<CXX_COMPILER_ID:Clang>:
-        $<$<CONFIG:Debug>: -g -Wno-c++98-compat -Wall>
+        $<$<CONFIG:Debug>: -g -Wno-c++98-compat -Wall -Weverything>
         $<$<CONFIG:Release>:-O3 >
     >
 )

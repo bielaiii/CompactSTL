@@ -11,8 +11,9 @@ struct is_function_ptr : std::false_type {
 };
 
 template <typename T>
-struct is_function_ptr<T, std::void_t<decltype(std::is_function_v<T>),
-                                      decltype(std::is_pointer_v<T>)>>
+struct is_function_ptr<T, std::void_t<
+    std::conjunction<decltype(std::is_function_v<T>),
+                                      decltype(std::is_pointer_v<T>)>>>
     : std::true_type {
 };
 
@@ -54,12 +55,14 @@ int main() {
     using std::cout;
     Foo *foo;
     Bar bar;
-    std::cout << CompactSTL::is_callable_struct<CalFun>::value << "\n";
+    cout << std::is_function_v<Foo> << std::endl;
+    cout << std::is_function_v<Foo*> << std::endl;
+    /* std::cout << CompactSTL::is_callable_struct<CalFun>::value << "\n";
     std::cout << CompactSTL::is_callable_struct<Foo>::value << "\n";
     std::cout << CompactSTL::is_callable_struct<Bar>::value << "\n";
 
     std::cout << CompactSTL::is_function_ptr<decltype(Delfunc)>::value << "\n";
-    std::cout << CompactSTL::is_function_ptr<decltype(foo)>::value << "\n";
+    std::cout << "shoudle not " << CompactSTL::is_function_ptr<decltype(foo)>::value << "\n";
 
     auto lbd = []() { cout << "hello,world\n"; };
 
@@ -71,7 +74,7 @@ int main() {
               << CompactSTL::is_function_ptr<decltype(Delfunc)>::value << "\n";
     std::cout << "del func ptr obj "
               << CompactSTL::is_callable_struct<decltype(Delfunc)>::value
-              << "\n";
+              << "\n"; */
     //cout << std::void_t<CompactSTL::is_function_ptr<CalFun>::value>::value << "\n";
     return 0;
 }
