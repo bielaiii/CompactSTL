@@ -1,89 +1,56 @@
 #include <iostream>
-
-#include "header.h"
-#include "someFunctionality.hpp"
-#include <type_traits>
-#include <utility>
-
-namespace CompactSTL {
-template <typename T>
-struct is_function_ptr : std::false_type {};
-
-template <typename R, typename ... Args>
-struct is_function_ptr<R(*)(Args...)>
-    : std::true_type {};
-
-template <typename T, typename = void>
-struct is_callable_struct : std::false_type {};
+#include <coroutine>
 
 template <typename T>
-struct is_callable_struct<T,
-                          std::void_t<std::enable_if_t<std::is_class<T>::value>,
-                                      decltype(std::declval<T>()())>>
-    : std::true_type {};
+struct Generator {
+    struct promise_type {
+        T current_value;
 
-template <typename T, typename = void>
-struct is_callable_object : std::false_type {};
+        Generator get_return_object() {
+            return Generator{std::coroutine_handle<promise_type>::from_promise(*this)};
+        }
 
-template <typename T>
-struct is_callable_object<
-    T, std::enable_if_t<
-           std::disjunction<
-               typename CompactSTL::is_function_ptr<T>::value,
-               typename CompactSTL::is_callable_struct<T>::value>::value,
-           void>> : std::true_type {
-    using type = T;
+        std::suspend_always yield_value(T value) noexcept {
+            current_value = value;
+            return {};
+        }
+
+        std::suspend_always initial_suspend() noexcept {
+            return {};
+        }
+
+        std::suspend_always final_suspend() noexcept {
+            return {};
+        }
+
+        void return_void() {}
+        void unhandled_exception() { std::exit(1); }
+    };
+
+    using handle_type = std::coroutine_handle<promise_type>;
+    handle_type handle;
+
+    explicit Generator(handle_type h) : handle(h) {}
+    ~Generator() { if (handle) handle.destroy(); }
+
+    T next() {
+        handle.resume();
+        return handle.promise().current_value;
+    }
+
+    bool done() { return handle.done(); }
 };
-} // namespace CompactSTL
 
-struct CalFun {
-    void operator()() { std::cout << "CalFun\n"; };
-};
-
-void Delfunc(Foo *foo) {
-    std::cout << "Delete Foo\n";
-    delete foo;
+Generator<int> generateNumbers() {
+    for (int i = 1; i <= 5; ++i) {
+        co_yield i;
+    }
 }
 
 int main() {
-    using std::cout;
-    Foo *foo;
-    Bar bar;
-    cout<< CompactSTL::is_function_ptr<void(*)(int ,float)>::value << std::endl;
-    cout<< CompactSTL::is_function_ptr<decltype(+Delfunc)>::value << std::endl;
-
-
-    using tp1 = decltype(Delfunc);
-    using tp2 = decltype(+Delfunc);
-   /*  cout << std::is_function_v<Foo> << std::endl;
-    cout << std::is_function_v<Foo *> << std::endl;
-    cout << std::is_function_v<decltype(Delfunc)> << std::endl;
-    cout << std::is_pointer_v<Foo> << std::endl;
-    cout << std::is_pointer_v<Foo*> << std::endl;
-    cout << std::is_pointer_v<Foo*>  << std::endl;
-    cout << CompactSTL::is_function_ptr<Foo*>::value  << std::endl;
-    auto pt1 = std::declval<decltype(Delfunc)>; */
-    //cout << std::is<Foo*>  << std::endl;
-    /* std::cout << CompactSTL::is_callable_struct<CalFun>::value << "\n";
-    std::cout << CompactSTL::is_callable_struct<Foo>::value << "\n";
-    std::cout << CompactSTL::is_callable_struct<Bar>::value << "\n";
-
-    std::cout << CompactSTL::is_function_ptr<decltype(Delfunc)>::value << "\n";
-    std::cout << "shoudle not " <<
-    CompactSTL::is_function_ptr<decltype(foo)>::value << "\n";
-
-    auto lbd = []() { cout << "hello,world\n"; };
-
-    std::cout << CompactSTL::is_callable_object<CalFun>::value << "\n";
-    std::cout << CompactSTL::is_callable_object<Foo>::value << "\n";
-    std::cout << CompactSTL::is_callable_object<Bar>::value << "\n";
-    std::cout << CompactSTL::is_callable_object<decltype(lbd)>::value << "\n";
-    std::cout << "del func ptr "
-              << CompactSTL::is_function_ptr<decltype(Delfunc)>::value << "\n";
-    std::cout << "del func ptr obj "
-              << CompactSTL::is_callable_struct<decltype(Delfunc)>::value
-              << "\n"; */
-    // cout << std::void_t<CompactSTL::is_function_ptr<CalFun>::value>::value <<
-    // "\n";
+    auto gen = generateNumbers();
+    while (!gen.done()) {
+        std::cout << "Generated: " << gen.next() << std::endl;
+    }
     return 0;
 }
