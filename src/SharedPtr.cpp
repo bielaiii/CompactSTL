@@ -43,6 +43,11 @@ public:
         int n = remain.fetch_add(1);
         return n;
     }
+
+    void reset_count()
+    {
+        remain.store(-0);
+    }
 };
 
 template <typename T, typename = void> struct is_callable : std::false_type {};
@@ -121,7 +126,8 @@ public:
     }
 
     void Release(const SharedPointer<T> &ptr = nullptr) {
-        ptr.block_->remain = 0;
+        //ptr.block_->remain = 0;
+        ptr.block_->reset_count();
         delete ptr;
         delete block_;
     }
@@ -142,7 +148,7 @@ public:
 
     T *operator*() { return *ptr; }
 
-    T *Get() { return this->t; }
+    T *Get() { return this->ptr; }
 
     T *operator->() { return ptr; }
 };
@@ -186,20 +192,22 @@ void DeleteFunc(Foo *t) {
 }
 
 int main() {
-    using namespace CompactSTL;
+    using namespace std;
 
-    auto sp1     = std::shared_ptr<Foo>(new Foo(12, 3.3), DeleteFunc);
-    auto tempdel = [](Foo *foo) {
-        cout << "delete from lambda func\n";
-        delete foo;
-    };
+    // Foo f1= Bar(1, 2.0);
+    shared_ptr<Foo> sp3, sp4;
 
     {
-        auto sp4 = SharedPointer<Foo>(new Foo(12, 3.3), tempdel);
-        auto sp5 = sp4;
-        cout << "will not yet destruct\n";
+        shared_ptr<Foo> sp1 = make_shared<Bar>(1, 2.0);
+        sp3 = sp1;
+
+        {
+            sp4 = sp3;
+        }
+
+        // cout << sp1->
+        cout << std::format("{}, {}", sp1->a, sp1->a) << "\n";
     }
 
-    auto sp2 = CompactSTL::SharedPointer<Foo>(new Foo(1, 3.3), DeleteFunc);
     return 0;
 }

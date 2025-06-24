@@ -1,56 +1,43 @@
+#include <compare>
+#include <functional>
 #include <iostream>
+
 #include <coroutine>
+#include <ranges>
+#include <vector>
+using namespace std;
+  
 
-template <typename T>
-struct Generator {
-    struct promise_type {
-        T current_value;
+class foo {
+    public:
 
-        Generator get_return_object() {
-            return Generator{std::coroutine_handle<promise_type>::from_promise(*this)};
+    int value;
+    std::string email;
+    float ffffff;
+
+    friend std::weak_ordering operator<=>(const foo &lhs, const foo &rhs) {
+        if (lhs.value > rhs.value) {
+            return std::weak_ordering::greater;
+        
+        } else if (lhs.email < rhs.email) {
+            return std::weak_ordering::greater;
+
+        } else if (abs(lhs.ffffff - rhs.ffffff) < 1e6) {
+            return std::weak_ordering::equivalent;
         }
-
-        std::suspend_always yield_value(T value) noexcept {
-            current_value = value;
-            return {};
-        }
-
-        std::suspend_always initial_suspend() noexcept {
-            return {};
-        }
-
-        std::suspend_always final_suspend() noexcept {
-            return {};
-        }
-
-        void return_void() {}
-        void unhandled_exception() { std::exit(1); }
-    };
-
-    using handle_type = std::coroutine_handle<promise_type>;
-    handle_type handle;
-
-    explicit Generator(handle_type h) : handle(h) {}
-    ~Generator() { if (handle) handle.destroy(); }
-
-    T next() {
-        handle.resume();
-        return handle.promise().current_value;
+        return std::weak_ordering::less;
     }
 
-    bool done() { return handle.done(); }
 };
 
-Generator<int> generateNumbers() {
-    for (int i = 1; i <= 5; ++i) {
-        co_yield i;
-    }
-}
 
-int main() {
-    auto gen = generateNumbers();
-    while (!gen.done()) {
-        std::cout << "Generated: " << gen.next() << std::endl;
-    }
+int main(){
+    foo f1{.value = 1, .email = "asdas@gmail.com",.ffffff= 121.4324};
+    foo f2{.value = 1, .email = "asdas111@gmail.com", .ffffff = 121.4324};
+    cout << "f1 <= f2: " << (f1 <= f2) << "\n";
+    cout << "f2 < f1: " << (f2 < f1) << "\n";
+    cout << "v1 > v2: " << (f1 > f2) << "\n";
+    cout << "v2 >= v1: " << (f2 >= f1) << "\n";
+    //cout << "v2 <=> v1: " << (f2 == f1) << "\n";
     return 0;
 }

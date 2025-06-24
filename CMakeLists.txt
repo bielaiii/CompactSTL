@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 PROJECT(guideline)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_executable(UniquePtr)
@@ -11,6 +11,7 @@ add_executable(Pair)
 add_executable(Main)
 add_executable(Test)
 add_executable(C_sample)
+add_executable(Vector)
 
 target_sources(UniquePtr PRIVATE src/UniquePtr.cpp)
 target_sources(SharedPtr PRIVATE src/SharedPtr.cpp)
@@ -19,6 +20,7 @@ target_sources(Pair PRIVATE src/Pair.cpp)
 target_sources(Main PRIVATE src/main.cpp)
 target_sources(Test PRIVATE src/test.cpp)
 target_sources(C_sample PRIVATE src/a.c)
+target_sources(Vector PRIVATE src/vector.cpp)
 
 
 include_directories(include)
