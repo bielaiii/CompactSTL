@@ -21,22 +21,31 @@ private:
     T *cur;
 
 public:
-    using Pointer           = T *;
-    using Reference         = Iterator<T> &;
-    using iterator_category = std::random_access_iterator_tag;
+    using Value_pointer     = T *;
+    using value_reference   = T &;
+    using iterator_ref      = Iterator<T> &;
+    //using iterator_category = std::random_access_iterator_tag;
     using iterator_type     = Iterator<T>;
+    using iterator_concept  = std::contiguous_iterator_tag;
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type        = std::remove_cv_t<T>;
+    using difference_type   = ptrdiff_t;
+    using pointer           = T *;
+    using reference         = T &;
+
 
     Iterator(T *ptr) : cur(ptr) {};
+    Iterator() = default;
 
-    T &operator*() { return *cur; }
+    value_reference operator*() { return *cur; }
 
-    Reference operator->() { return *this; }
-    Reference operator++() {
+    Value_pointer operator->() const { return cur; }
+    iterator_ref operator++() {
         cur++;
         return *this;
     }
 
-    Reference operator--() {
+    iterator_ref operator--() {
         cur--;
         return *this;
     }
@@ -58,12 +67,12 @@ public:
     using Reference         = T &;
     using iterator_category = std::random_access_iterator_tag;
     using iterator_type     = Reverse_iterator<T>;
-
+    using value_type        = T;
     Reverse_iterator(T *ptr) : cur(ptr) {};
 
-    T operator*() { return *cur; }
+    Reference operator*() const { return *cur; }
 
-    Reference operator->() { return cur; }
+    Pointer operator->() const { return cur; }
     Reference operator++() {
         cur--;
         return *cur;
@@ -72,6 +81,11 @@ public:
     Reference operator--() {
         cur++;
         return cur;
+    }
+
+    Reference operator=(int i) {
+        *cur = i;
+        return *cur;
     }
 
     friend bool operator==(Reverse_iterator<T> lhs, Reverse_iterator<T> rhs) {
