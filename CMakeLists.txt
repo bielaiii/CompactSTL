@@ -22,6 +22,7 @@ target_sources(Test PRIVATE src/test.cpp)
 target_sources(C_sample PRIVATE src/a.c)
 target_sources(Vector PRIVATE src/vector.cpp)
 
+add_subdirectory(test)
 
 include_directories(include)
 

@@ -2,6 +2,7 @@
 #define ITERATOR_H
 
 #include "iterator"
+#include <compare>
 #include <cstddef>
 #include <iterator>
 #include <type_traits>
@@ -24,7 +25,6 @@ public:
     using Value_pointer     = T *;
     using value_reference   = T &;
     using iterator_ref      = Iterator<T> &;
-    //using iterator_category = std::random_access_iterator_tag;
     using iterator_type     = Iterator<T>;
     using iterator_concept  = std::contiguous_iterator_tag;
     using iterator_category = std::random_access_iterator_tag;
@@ -48,6 +48,10 @@ public:
     iterator_ref operator--() {
         cur--;
         return *this;
+    }
+
+    std::strong_ordering operator<=>(const Iterator<T> &other) const {
+        return cur <=> other.cur;
     }
 
     friend bool operator==(Iterator<T> lhs, Iterator<T> rhs) {
