@@ -1,4 +1,5 @@
 #include "iterator.hpp"
+#include <initializer_list>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -48,14 +49,29 @@ public:
         other._M_end_   = nullptr;
         other._M_last_  = nullptr;
     }
-    Reference operator=(VectorDetail<T> other) noexcept {
+    bool operator!=(const VectorDetail<T> &other) {
+        return _M_begin_ != other._M_begin_;
+    }
+    friend void swap(VectorDetail<T> &new_dst,
+                     VectorDetail<T> &old_dst) noexcept {
+        using namespace std;
+        swap(new_dst._M_begin_, old_dst._M_begin_);
+        swap(new_dst._M_end_, old_dst._M_end_);
+        swap(new_dst._M_last_, old_dst._M_last_);
+        old_dst._M_begin_ = nullptr;
+        old_dst._M_end_   = nullptr;
+        old_dst._M_last_  = nullptr;
+
+        println("call my swap");
+    }
+    VectorDetail<T> operator=(VectorDetail<T> other) noexcept {
         if (*this != other) {
             VectorDetail<T> temp(other);
             swap(*this, temp);
         }
         return *this;
     }
-    Reference operator=(VectorDetail<T> &&other) noexcept {
+    VectorDetail<T> operator=(VectorDetail<T> &&other) noexcept {
         if (this != &other) {
             VectorDetail<T> temp(std::move(other));
             swap(*this, temp);
@@ -63,13 +79,12 @@ public:
         return *this;
     }
 
-    friend void swap(T &&lhs, T &&rhs) noexcept {
-        using namespace std;
-        swap(lhs._M_begin_, rhs._M_begin_);
-        swap(lhs._M_end_, rhs._M_end_);
-        swap(lhs._M_last_, rhs._M_last_);
+    ~VectorDetail() {
+
+        println("call my destructor");
+
+        delete _M_begin_;
     }
-    ~VectorDetail() { delete _M_begin_; }
 };
 
 template <typename T> class vector {
@@ -92,38 +107,48 @@ public:
     using Iterator__  = Iterator<T>;
     using RIterator__ = Reverse_iterator<T>;
 
-    vector(size_t sz = 10) noexcept : _M_detail_(sz * 2) {};
-    vector(size_t sz, const T &value) noexcept : vector(sz) {
-        std::uninitialized_fill_n(begin(), sz, value);
+    vector(size_t capacity_ = 10) noexcept : _M_detail_(capacity_ * 2) {};
+    vector(size_t capacity_, const T &value) noexcept : _M_detail_(capacity_) {
+        std::uninitialized_fill_n(begin(), capacity_, value);
+        _M_detail_._M_end_ = _M_detail_._M_begin_ + capacity_;
     }
     vector(CompactSTL::vector<T> &other) noexcept
         : _M_detail_(other._M_detail_) {
         std::uninitialized_copy(other.begin(), other.end(), begin());
+        auto sz = std::distance(std::to_address(other.begin()),
+                                std::to_address(other.end()));
+        println("copy size {}", sz);
+        _M_detail_._M_end_ = _M_detail_._M_begin_ + sz;
     };
     vector(CompactSTL::vector<T> &&other) noexcept
         : _M_detail_(std::move(other._M_detail_)) {};
 
-    Reference operator=(CompactSTL::vector<T> &other) noexcept {
+    vector<T>& operator=(CompactSTL::vector<T> other) noexcept {
         if (this == &other) {
             return *this;
         }
-        _M_detail_ = other._M_detail_;
+        //_M_detail_ = other._M_detail_;
+        swap(_M_detail_, other._M_detail_);
         return *this;
     }
 
-    Reference operator=(CompactSTL::vector<T> &&other) noexcept {
+    /* vector<T>& operator=(CompactSTL::vector<T> &&other) noexcept {
         if (this == &other) {
             return *this;
+            //_M_detail_ = other._M_detail_;
         }
-        _M_detail_ = other._M_detail_;
         return *this;
-    }
+    } */
     template <typename U> vector(U &begin_, U &end_) {
         auto sz    = std::distance(begin_, end_);
         _M_detail_ = VectorDetail<T>(sz);
 
         std::uninitialized_copy(begin_, end_, this->begin());
     }
+
+    vector(std::initializer_list<T> &init_list) noexcept {
+        auto sz = init_list.size();
+    };
 
     //~vector() { _M_detail_.~VectorDetail(); }
 
