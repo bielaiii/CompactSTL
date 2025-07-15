@@ -36,11 +36,14 @@ int main() {
     arr[7] = 7;
     //std::array<int, 8> stdarr;
     std::vector<int> stdvt;
+    int a = 10;
+    stdvt.push_back(a);
     //stdvt.begin();
     for (auto c = arr.rbegin(); c != arr.rend(); ++c) {
         println("{}", *c);
     
     }
+    //std::vector<int> std
     arr[0] = 1;
     return 0;
 }
