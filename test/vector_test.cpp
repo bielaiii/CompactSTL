@@ -5,14 +5,25 @@
 #include <numeric>
 #include <print>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 using namespace CompactSTL;
+struct MyType {
+    int value;
+    std::string name;
+    double currency;
+};
 
+template <typename T> void func(T &vec) {
+    vec.emplace_back(1, "noname", 100.0);
+    println("name : {} val : {} currency : {}", vec.begin()->name,
+            vec.begin()->value, vec.begin()->currency);
+}
 void test_basic() {
     vector<int> v;
     assert(v.size() == 0);
-    //std::println("size : {}, capacity : {}", v.size(), v.capacity());
+    // std::println("size : {}, capacity : {}", v.size(), v.capacity());
     assert(v.capacity() > 0);
     v.emplace_back(1);
     v.emplace_back(2);
@@ -31,7 +42,7 @@ void test_at_and_exception() {
     try {
         v.at(1);
         assert(false); // 应该抛出异常
-    } catch (const std::runtime_error&) {
+    } catch (const std::runtime_error &) {
         // 正常
     }
 }
@@ -46,7 +57,8 @@ void test_front_back() {
 
 void test_iterator_and_std_algorithm() {
     vector<int> v;
-    for (int i = 0; i < 5; ++i) v.emplace_back(i);
+    for (int i = 0; i < 5; ++i)
+        v.emplace_back(i);
     // std::accumulate
     int sum = std::accumulate(v.begin(), v.end(), 0);
     assert(sum == 0 + 1 + 2 + 3 + 4);
@@ -75,6 +87,17 @@ void test_custom_type() {
     assert(v[0].name == "a" && v[1].currency == 2.2);
 }
 
+struct base {
+    int a;
+};
+struct Derived : public base {
+    float v;
+    ~Derived()
+    {
+        cout << "call my destructor\n";
+    }
+};
+
 int main() {
     test_basic();
     test_at_and_exception();
@@ -83,5 +106,6 @@ int main() {
     test_copy_and_move();
     test_custom_type();
     std::cout << "All tests passed!" << std::endl;
+
     return 0;
 }

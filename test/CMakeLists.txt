@@ -6,10 +6,12 @@ SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(VectorTest)
 add_executable(ExpressionTest)
+add_executable(Function)
 
 
 target_sources(VectorTest PRIVATE vector_test.cpp)
 target_sources(ExpressionTest PRIVATE expression_template.cpp)
+target_sources(Function PRIVATE function.cpp)
 
 
 include_directories(${CMAKE_SOURCE_DIR}/include)

@@ -58,11 +58,6 @@ public:
         swap(new_dst._M_begin_, old_dst._M_begin_);
         swap(new_dst._M_end_, old_dst._M_end_);
         swap(new_dst._M_last_, old_dst._M_last_);
-        old_dst._M_begin_ = nullptr;
-        old_dst._M_end_   = nullptr;
-        old_dst._M_last_  = nullptr;
-
-        println("call my swap");
     }
     VectorDetail<T> operator=(VectorDetail<T> other) noexcept {
         if (*this != other) {
@@ -79,12 +74,7 @@ public:
         return *this;
     }
 
-    ~VectorDetail() {
-
-        println("call my destructor");
-
-        delete _M_begin_;
-    }
+    ~VectorDetail() { delete _M_begin_; }
 };
 
 template <typename T> class vector {
@@ -99,6 +89,14 @@ private:
         T *new_dst    = new T[new_size];
         auto new_iter = Iterator<T>(new_dst);
         std::uninitialized_copy(begin(), end(), new_iter);
+    }
+    void partital_move(Iterator<T> beginer_, Iterator<T> ender_,
+                       Iterator<T> inser_pos, Iterator<T> new_pos) {
+        auto dis = std::distance(beginer_, inser_pos);
+        std::uninitialized_move(beginer_, beginer_ + dis - 1, new_pos);
+        new_pos += dis - 1;
+        beginer_ += dis - 1;
+        std::uninitialized_move(beginer_, ender_, new_pos);
     }
 
 public:
@@ -115,30 +113,21 @@ public:
     vector(CompactSTL::vector<T> &other) noexcept
         : _M_detail_(other._M_detail_) {
         std::uninitialized_copy(other.begin(), other.end(), begin());
-        auto sz = std::distance(std::to_address(other.begin()),
-                                std::to_address(other.end()));
-        println("copy size {}", sz);
+        auto sz            = std::distance(std::to_address(other.begin()),
+                                           std::to_address(other.end()));
         _M_detail_._M_end_ = _M_detail_._M_begin_ + sz;
     };
     vector(CompactSTL::vector<T> &&other) noexcept
         : _M_detail_(std::move(other._M_detail_)) {};
 
-    vector<T>& operator=(CompactSTL::vector<T> other) noexcept {
+    vector<T> &operator=(CompactSTL::vector<T> other) noexcept {
         if (this == &other) {
             return *this;
         }
-        //_M_detail_ = other._M_detail_;
         swap(_M_detail_, other._M_detail_);
         return *this;
     }
 
-    /* vector<T>& operator=(CompactSTL::vector<T> &&other) noexcept {
-        if (this == &other) {
-            return *this;
-            //_M_detail_ = other._M_detail_;
-        }
-        return *this;
-    } */
     template <typename U> vector(U &begin_, U &end_) {
         auto sz    = std::distance(begin_, end_);
         _M_detail_ = VectorDetail<T>(sz);
@@ -149,8 +138,6 @@ public:
     vector(std::initializer_list<T> &init_list) noexcept {
         auto sz = init_list.size();
     };
-
-    //~vector() { _M_detail_.~VectorDetail(); }
 
     [[nodiscard]] size_t size() {
         return _M_detail_._M_end_ - _M_detail_._M_begin_;
@@ -191,15 +178,34 @@ public:
     T *operator*() { return _M_detail_._M_begin_; }
 
     void shrink_to_fit() {}
-    void clear() { _M_detail_._M_end_ = _M_detail_._M_begin_; }
+    void clear() {
+        if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>) {
+            _M_detail_._M_end_ = _M_detail_._M_begin_;
+        } else {
+            for (T *start_ = _M_detail_._M_begin_; start_ < _M_detail_._M_end_;
+                 start_++) {
+                start_->~T();
+            }
+        }
+    }
 
     template <typename... Args> void emplace(Iterator__ it_, Args &&...arg) {
         Pointer *loc = std::to_address(it_);
-        if (loc >= _M_detail_._M_end_) {
+        if (size() + 1 > capacity()) {
+
+            return;
+        }
+
+        if (loc == _M_detail_._M_end_) {
             ::new (static_cast<void *>(loc)) T(std::forward<Args>(arg)...);
             _M_detail_._M_end_ += 1;
             return;
+        } else if (loc < _M_detail_._M_end_) {
+
+        } else {
+            
         }
+
         auto next_pos = it_ + 1;
         std::copy(next_pos, end(), next_pos + 1);
     }
@@ -209,20 +215,34 @@ public:
         if (_M_detail_._M_end_ < _M_detail_._M_last_) {
             new (static_cast<void *>(_M_detail_._M_end_))
                 T(std::forward<U>(value)...);
-            _M_detail_._M_end_ += 1; // sizeof...(U);
+            _M_detail_._M_end_ += 1;
         } else {
             throw std::runtime_error("not yet implemented\n");
         }
     }
 
-    void push_back(T &&value) { emplace_back(std::forward<T>(value)); }
+    void push_back(T &&value) { emplace_back(std::move<T>(value)); }
+
+    void push_back(const T &value) { emplace_back(value); }
+
     void pop_back() {
-        if (_M_detail_._M_end_ > _M_detail_._M_begin_) {
+        if (empty()) {
+            return;
+        }
+        if constexpr (std::is_standard_layout_v<T> &&
+                      std::is_trivially_destructible_v<T>) {
+
+            if (_M_detail_._M_end_ > _M_detail_._M_begin_) {
+                _M_detail_._M_end_--;
+            }
+        } else {
+            T *last_v = _M_detail_._M_end_ - 1;
+            last_v->~T();
             _M_detail_._M_end_--;
         }
     }
 
-    void empty() { return _M_detail_._M_begin_ == _M_detail_._M_end_; }
+    bool empty() { return _M_detail_._M_begin_ == _M_detail_._M_end_; }
 
     T *data() { return _M_detail_._M_begin_; }
 
@@ -244,7 +264,7 @@ public:
         if (idx >= this->size()) {
             throw std::runtime_error("index out of bound");
         }
-        return _M_detail_._M_begin_ + idx;
+        return *(_M_detail_._M_begin_ + idx);
     }
 
     Reference front() { return *_M_detail_._M_begin_; }
@@ -255,22 +275,3 @@ public:
 };
 
 } // namespace CompactSTL
-
-struct MyType {
-    int value;
-    std::string name;
-    double currency;
-};
-
-template <typename T> void func(T &vec) {
-    vec.emplace_back(1, "noname", 100.0);
-    // println("{}", vec.size());
-    println("name : {} val : {} currency : {}", vec.begin()->name,
-            vec.begin()->value, vec.begin()->currency);
-}
-/* int main() {
-
-    using namespace CompactSTL;
-
-    return 0;
-} */
