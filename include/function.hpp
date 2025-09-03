@@ -7,37 +7,9 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
+#include<iostream>
+using namespace std;
 namespace CompactSTL {
-
-#define LOCAL_CALLABLE_OBJECT 16
-
-struct destory_op {};
-struct clone_op {};
-struct init_op {};
-struct invoke_op {};
-
-template <typename Ret, typename... Args> struct callable_object {
-public:
-    enum op { clone_, init_, destory_, invoke_ };
-
-    template <typename T> int manager(op op_) {
-        switch (op_) {
-        case init_:
-
-        case clone_:
-
-        case destory_:
-            cleanup<T>();
-            // case invoke_:
-        }
-        return 0;
-    }
-    void process(init_op) {}
-
-    template <typename T> void clone_func() {}
-
-    template <typename T> Ret invokeResult() {}
-};
 
 static bool store_locally;
 union aliasing_ {
@@ -45,15 +17,15 @@ union aliasing_ {
 };
 
 enum op { clone_, init_, destory_, invoke_ };
-union buf {
+union Stored_buf {
     [[nodiscard]] void *access() noexcept { return &buffer[0]; };
     [[nodiscard]] const void *access() const noexcept { return &buffer[0]; };
 
-    template <typename T> [[nodiscard]] T &access() noexcept {
+    template <typename T> [[nodiscard]] T &access_ref() noexcept {
         return *static_cast<T *>(access());
     };
 
-    template <typename T> [[nodiscard]] const T &access() const noexcept {
+    template <typename T> [[nodiscard]] const T &access_ref() const noexcept {
         return *static_cast<T *>(access());
     };
 
@@ -61,12 +33,12 @@ union buf {
         as__; // 保证内存对齐，alignas + 模板，要同时给union
               // 和buffer作用的方式得声明两次
               // 直接声明一个用作对齐的占位符更加方便，这样可以保证union和buffer此时一定都是8字节对齐
-    char buffer[LOCAL_CALLABLE_OBJECT];
-} bu;
+    char buffer[sizeof(aliasing_)];
+};
 
 template <typename Ret, typename Obj, typename... Args> struct hard_code_type {
-    constexpr static bool store_locally = sizeof(Obj) < sizeof(void *) * 4;
     using simple_obj                    = std::decay_t<Obj>;
+    constexpr static bool store_locally = sizeof(simple_obj) < sizeof(void *) * 4;
 
     template <typename func> static Ret operator()(func *ptr, Args &&...args) {
         if constexpr (std::is_same_v<Ret, void>) {
@@ -76,9 +48,8 @@ template <typename Ret, typename Obj, typename... Args> struct hard_code_type {
         }
     }
 
-    static Ret operator()(buf &where, Args... args) {
-        Obj *obj = where.access<Obj *>();
-        ;
+    static Ret operator()(Stored_buf &where, Args... args) {
+        Obj *obj = where.access_ref<Obj *>();
         if constexpr (std::is_same_v<Ret, void>) {
             std::invoke(*obj, std::forward<Args>(args)...);
         } else {
@@ -86,55 +57,62 @@ template <typename Ret, typename Obj, typename... Args> struct hard_code_type {
         }
     }
 
-    static void cleanup(buf &dst, buf &src) {
+    static void cleanup(Stored_buf &dst, Stored_buf &src) {
         using ty = std::decay_t<Obj>;
         if constexpr (!store_locally) {
-            delete dst.access<ty *>();
+            delete dst.access_ref<ty *>();
         } else if constexpr (!std::is_trivially_destructible_v<ty>) {
-            dst.access<ty>().~ty();
+            dst.access_ref<ty>().~ty();
         }
     }
 
-    static void copy_obj(buf &dst, buf &src) {
-        auto dst_ = dst.access<simple_obj>();
-        auto src_ = src.access<simple_obj>();
-        if constexpr (std::is_trivially_copy_constructible_v<Obj>) {
-            std::memcpy(&dst, &src, sizeof(Obj));
+    static void copy_obj(Stored_buf &dst, Stored_buf &src) {
+        // static assert guarantee that union copy is always trivially copy
+        // constructible
+        static_assert(std::is_trivially_copy_constructible_v<Stored_buf>,
+                      "compiler stop");
+        auto dst_ = static_cast<simple_obj *>(dst.access());
+        auto src_ = static_cast<simple_obj *>(src.access());
+        static_assert(std::is_pointer_v<decltype(dst_)>, "should not print");
+        if constexpr (store_locally) {
+            if constexpr (std::is_trivially_copy_constructible_v<Obj>) {
+                std::memcpy(dst_, src_, sizeof(simple_obj));
+            } else {
+                ::new (dst_) Obj(*src_);
+            }
         } else {
-            dst = new Obj(*src_);
+            dst.access_ref<simple_obj *>() = new simple_obj(*src_);
         }
     }
-    static void process(buf &dst, buf &src, init_op) {}
 
-    static int init(buf &dst, Obj &&obj) {
+    static int init(Stored_buf &dst, Obj &&obj) {
         using ty = std::decay_t<Obj>;
         if constexpr (!store_locally) {
-            dst.access<ty*>() = new ty(std::forward<Obj>(obj));
+            dst.access_ref<ty *>() = new ty(std::forward<Obj>(obj));
         } else {
             ::new (dst.access()) ty(std::forward<Obj>(obj));
         }
         return 1;
     }
 
-    static int manager_op(buf &dst, buf &src, op op_) {
+    static int manager_op(Stored_buf &dst, Stored_buf &src, op op_) {
         switch (op_) {
         case clone_: copy_obj(dst, src); break;
         case destory_: cleanup(dst, src); break;
-        // case invoke_: call_help(dst, src); break;
         default: break;
         }
         return 0;
     }
-    static Ret call_help(buf &bu, Args... args) {
+    static Ret call_help(Stored_buf &bu, Args... args) {
         if constexpr (store_locally) {
-            auto &obj = bu.access<simple_obj>();
+            auto &obj = bu.access_ref<simple_obj>();
             if constexpr (std::is_same_v<Ret, void>) {
                 std::invoke(obj, std::forward<Args>(args)...);
             } else {
                 return std::invoke(obj, std::forward<Args>(args)...);
             }
         } else {
-            auto obj = bu.access<simple_obj *>();
+            auto obj = bu.access_ref<simple_obj *>();
             if constexpr (std::is_same_v<Ret, void>) {
                 std::invoke(*obj, std::forward<Args>(args)...);
             } else {
@@ -146,18 +124,16 @@ template <typename Ret, typename Obj, typename... Args> struct hard_code_type {
 
 template <typename sig> class functional;
 
-template <typename Ret, typename... Args>
-class functional<Ret(Args...)> : private callable_object<Ret, Args...> {
+template <typename Ret, typename... Args> class functional<Ret(Args...)> {
 private:
-    using no_type_invoker = Ret (*)(buf &, Args...);
-    using manager         = int (*)(buf &, buf &, op);
+    using no_type_invoker = Ret (*)(Stored_buf &, Args...);
+    using manager         = int (*)(Stored_buf &, Stored_buf &, op);
     no_type_invoker invoker_{};
     manager manager_{};
-    buf stored_buf{};
+    Stored_buf stored_buf{};
 
 public:
     functional() = default;
-    // functional(std::nullptr_t) = default;
 
     template <typename Call_>
     functional(Call_ &&call_) noexcept
@@ -175,24 +151,14 @@ public:
         }
     }
 
-    /*     template<typename Call_>
-        functional(Call_ &&call_) noexcept {
-            using had = hard_code_type<Ret, Call_, Args...>;
-            if (had::process(forward<Call_>(call_))) {
-                invoker_ = &had::call_help;
-                manager_ = &had::manager_op;
-            }
-        } */
-
     functional(functional &other) noexcept {
-        stored_buf = other.stored_buf;
-        manager_   = other.manager_;
-        invoker_   = other.invoker_;
+        other.manager_(stored_buf, other.stored_buf, clone_);
+        manager_ = other.manager_;
+        invoker_ = other.invoker_;
     }
 
     functional(functional &&other) noexcept {
-
-        stored_buf       = other.stored_buf;
+        other.manager_(stored_buf, other.stored_buf, clone_);
         manager_         = other.manager_;
         invoker_         = other.invoker_;
         other.stored_buf = {};
@@ -204,6 +170,8 @@ public:
         return *this;
     }
 
+    operator bool() { return manager_ != nullptr; }
+
     void swap(functional &other) noexcept {
         std::swap(other.invoker_, this->invoker_);
         std::swap(other.manager_, this->manager_);
@@ -211,16 +179,17 @@ public:
     }
 
     Ret operator()(Args... args) {
-        if (invoker_) {
+        if (invoker_ != nullptr) {
             if constexpr (std::is_same_v<Ret, void>) {
                 invoker_(stored_buf, std::forward<Args>(args)...);
             } else {
                 return invoker_(stored_buf, std::forward<Args>(args)...);
             }
+        } else {
+            throw std::bad_function_call{};
         }
     }
 
-    // Ret operator()(Args &&...args) {}
     ~functional() {
         if (manager_) {
             manager_(stored_buf, stored_buf, destory_);
