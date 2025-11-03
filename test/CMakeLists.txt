@@ -5,11 +5,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(VectorTest)
+add_executable(VectorTest2)
 add_executable(ExpressionTest)
 add_executable(Function)
 
 
 target_sources(VectorTest PRIVATE vector_test.cpp)
+target_sources(VectorTest2 PRIVATE test_vector.cpp)
 target_sources(ExpressionTest PRIVATE expression_template.cpp)
 target_sources(Function PRIVATE function.cpp)
 

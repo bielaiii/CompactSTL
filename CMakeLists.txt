@@ -10,6 +10,7 @@ add_executable(Tuple)
 add_executable(Pair)
 add_executable(Main)
 add_executable(C_sample)
+add_executable(test1)
 
 target_sources(UniquePtr PRIVATE src/UniquePtr.cpp)
 target_sources(SharedPtr PRIVATE src/SharedPtr.cpp)
@@ -17,6 +18,7 @@ target_sources(Tuple PRIVATE src/Tuple.cpp)
 target_sources(Pair PRIVATE src/Pair.cpp)
 target_sources(Main PRIVATE src/main.cpp)
 target_sources(C_sample PRIVATE src/a.c)
+target_sources(test1 PRIVATE ${CMAKE_SOURCE_DIR}/test1.cpp)
 
 add_subdirectory(test)
 

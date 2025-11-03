@@ -4,47 +4,30 @@
 #include <print>
 #include <type_traits>
 #include <vector>
-using namespace std;
-
-template <size_t N> constexpr size_t fib(size_t) {
-    if constexpr (N == 0) {
-        return 1;
-    } else if constexpr (N == 1) {
-        return 1;
-    } else {
-        return fib<N - 1>(1) + fib<N - 2>(1);
-    }
-}
-
-template <size_t N> struct fibst {
-    static inline size_t value = fibst<N - 1>::value + fibst<N - 2>::value;
-};
-
-template <> struct fibst<1> {
-    static inline size_t value = 1;
-};
-template <> struct fibst<0> {
-    static inline size_t value = 1;
-};
+#include"vector.hpp"
 
 
-template<typename T>
-concept my_is_integral = is_integral_v<T> && is_floating_point_v<T>;
+#include <atomic>
+#include <cassert>
+#include <string>
+#include <thread>
+ using namespace CompactSTL;
 
-template <my_is_integral T>
-    //requires is_integral_v<T>
-T foo(T t) {
-    return t + 1;
-}
-int main() {
-    cout << fib<0>(1) << std::endl;
-    cout << fib<1>(1) << std::endl;
-    cout << fib<2>(1) << std::endl;
-    cout << fib<3>(1) << std::endl;
-    cout << fibst<0>::value << std::endl;
-    cout << fibst<1>::value << std::endl;
-    cout << fibst<2>::value << std::endl;
-    cout << fibst<3>::value << std::endl;
-
+ 
+int main()
+{
+    std::vector<int> stdvec{1,2,3,4,5};
+    stdvec.capacity();
+    
+    stdvec.begin();
+    vector<int> vec;
+    vec.push_back(1);
+    vec.push_back(2);
+    vec.push_back(3);
+    vec.push_back(4);
+    auto it = vec.begin();
+    it++;
+    ++it;
+    println("{}", *it);
     return 0;
-};
+}
