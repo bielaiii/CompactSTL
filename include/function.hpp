@@ -140,7 +140,7 @@ public:
 #if __cplusplus >= 202003L
         requires std::is_invocable_v<Call_, Args...>
 #else
-        ,
+        
         typename = std::enable_if_t<std::is_invocable_v<Callable, Args...>>
 #endif
     {

@@ -30,11 +30,3 @@ template <typename T, typename U> pair<T, U> MakePair(T &&t, U &&u) {
 
 } // namespace CompactSTL
 
-int main() {
-    using namespace CompactSTL;
-    auto p1 = MakePair(1, 314.1231);
-    cout << p1.first << "\n";
-    cout << p1.second << "\n";
-
-    return 0;
-}

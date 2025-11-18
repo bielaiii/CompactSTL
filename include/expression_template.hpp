@@ -81,7 +81,7 @@ template <typename T, size_t N> struct A_Mat : Expr<A_Mat<T, N>, T, N> {
 
     T operator[](size_t i) const noexcept { return data[i]; }
 
-    template <typename E> A_Mat &operator=(const Expr<E, T, N> const &e) {
+    template <typename E> A_Mat &operator=(const Expr<E, T, N>  &e) {
         for (int i = 0; i < N; i++) {
             data[i] = e[i];
         }
