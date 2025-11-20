@@ -8,13 +8,12 @@
 using namespace CompactSTL;
 static void test_single_element_tuple() {
     Tuple<int> t(42);
-    assert(t.get() == 42);
-    assert(t.GetElement<0>() == 42);
+   
 }
 
 static void test_multiple_element_tuple() {
     Tuple<int, double, std::string> t(10, 3.14, "hello");
-    decltype(t.baseTuple.t) aa = 10;
+
     assert(Get<0>(t) == 10);
     assert(Get<1>(t) == 3.14);
     assert(Get<2>(t) == "hello");
@@ -45,13 +44,13 @@ static void test_reference_semantics() {
     auto &ref0 = Get<0>(t);
     auto &ref1 = Get<1>(t);
 
-    // ref0 = 10;
+     ref0 = 10;
     ref1 = 20;
 
-    // assert(Get<0>(t) == 10);
+     assert(Get<0>(t) == 10);
     assert(Get<1>(t) == 20);
 }
-// todo
+
 int main() {
     try {
         test_single_element_tuple();

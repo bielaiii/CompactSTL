@@ -5,18 +5,11 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# 检测编译器并设置库
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    # Clang 使用 libc++
     add_compile_options(-stdlib=libc++)
-    add_link_options(-stdlib=libc++)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # GNU 使用默认 libstdc++
-else()
-    message(WARNING "Unsupported compiler: ${CMAKE_CXX_COMPILER_ID}")
+    add_link_options(-stdlib=libc++)   
 endif()
 
-# 可执行文件
 add_executable(UniquePtr)
 add_executable(SharedPtr)
 add_executable(Tuple)
@@ -39,8 +32,7 @@ add_compile_options(
         $<$<CONFIG:Release>:-O3>
     >
     $<$<CXX_COMPILER_ID:Clang>:
-        $<$<CONFIG:Debug>:-g -Wall -Weverything -Wno-c++98-compat -Wno-padded>
+        $<$<CONFIG:Debug>:-g -Wall -Weverything -Wno-c++98-compat >
         $<$<CONFIG:Release>:-O3>
     >
 )
-
